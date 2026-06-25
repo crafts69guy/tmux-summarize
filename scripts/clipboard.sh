@@ -11,15 +11,7 @@ src="${1:?clipboard.sh: missing src-pane}"
 
 # Prefer the system clipboard (tmux-yank syncs copy-mode yanks there), then fall
 # back to the most recent tmux paste buffer for setups without a clipboard tool.
-content=''
-if command -v pbpaste >/dev/null 2>&1; then
-  content="$(pbpaste 2>/dev/null)"
-elif command -v wl-paste >/dev/null 2>&1; then
-  content="$(wl-paste --no-newline 2>/dev/null)"
-elif command -v xclip >/dev/null 2>&1; then
-  content="$(xclip -selection clipboard -o 2>/dev/null)"
-fi
-[ -z "$content" ] && content="$(tmux show-buffer 2>/dev/null)"
+content="$(clipboard_text)"
 
 if [ -z "$content" ]; then
   tmux display-message 'summarize: clipboard is empty'

@@ -14,15 +14,29 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 scripts="$CURRENT_DIR/scripts"
 menu_key="$(get_opt menu_key 'S')"
 
-# One menu under a single key keeps the top-level prefix space uncluttered and
-# avoids colliding with other plugins' bindings. p/c/i/d choose the input source.
-# #{pane_id} is expanded by tmux before the script runs, so each action targets
-# the pane that was focused when the menu opened.
-tmux bind-key "$menu_key" display-menu -T ' Summarize ' -x C -y C \
-  'Current pane scrollback' p "run-shell \"$scripts/pane.sh '#{pane_id}'\"" \
-  'Clipboard / selection'   c "run-shell \"$scripts/clipboard.sh '#{pane_id}'\"" \
-  'URL or file…'            i "run-shell \"$scripts/input.sh '#{pane_id}'\"" \
-  'Cross-pane digest'       d "run-shell \"$scripts/digest.sh '#{pane_id}'\""
+# Shared Solarized Osaka chrome (all overridable via @summarize_*).
+bl="$(border_lines)"
+bs="$(border_style)"
+tt="$(popup_title)"
+
+# prefix+S opens one of two single-key UIs (uncluttered prefix space, no clashes
+# with other plugins). #{pane_id} is expanded by tmux before the script runs, so
+# every action targets the pane that was focused when it opened.
+if [ "$(get_opt picker 'fzf')" = menu ]; then
+  # Quick themed key-menu: p/c/i/d choose the source.
+  tmux bind-key "$menu_key" display-menu \
+    -T "$tt" -b "$bl" -s "$(menu_body_style)" -S "$bs" -H "$(menu_selected_style)" -x C -y C \
+    'Current pane scrollback' p "run-shell \"$scripts/pane.sh '#{pane_id}'\"" \
+    'Clipboard / selection'   c "run-shell \"$scripts/clipboard.sh '#{pane_id}'\"" \
+    'URL or file…'            i "run-shell \"$scripts/input.sh '#{pane_id}'\"" \
+    'Cross-pane digest'       d "run-shell \"$scripts/digest.sh '#{pane_id}'\""
+else
+  # Filterable fzf picker with live preview, hosted in a themed popup.
+  read -r pw ph < <(popup_dims)
+  tmux bind-key "$menu_key" display-popup -E \
+    -b "$bl" -S "$bs" -T "$tt" -w "$pw" -h "$ph" \
+    "$scripts/picker.sh '#{pane_id}'"
+fi
 
 # Optional direct bindings — unset by default, bound only when the user opts in,
 # e.g.  set -g @summarize_pane_key 'M-s'

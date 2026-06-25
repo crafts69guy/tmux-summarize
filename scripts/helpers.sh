@@ -94,3 +94,70 @@ wait_pane_ready() {
   done
   return 0
 }
+
+# ---------------------------------------------------------------------------
+# Shared content capture (reused by the direct-key scripts and the fzf picker)
+# ---------------------------------------------------------------------------
+
+# clipboard_text -> system clipboard (then most-recent tmux buffer) as-is.
+clipboard_text() {
+  local c=''
+  if command -v pbpaste >/dev/null 2>&1; then
+    c="$(pbpaste 2>/dev/null)"
+  elif command -v wl-paste >/dev/null 2>&1; then
+    c="$(wl-paste --no-newline 2>/dev/null)"
+  elif command -v xclip >/dev/null 2>&1; then
+    c="$(xclip -selection clipboard -o 2>/dev/null)"
+  fi
+  [ -z "$c" ] && c="$(tmux show-buffer 2>/dev/null)"
+  printf '%s' "$c"
+}
+
+# build_digest <src-pane> -> markdown concatenation of every pane's visible
+# content to stdout. Scope from @summarize_digest_scope (window|session).
+build_digest() {
+  local src="$1" scope label pid cmd
+  scope="$(get_opt digest_scope 'window')"
+  local list_args
+  case "$scope" in
+  session) list_args=(-s -t "$src") ;;
+  *) list_args=(-t "$src") ;;
+  esac
+  while read -r label pid cmd; do
+    [ -z "$pid" ] && continue
+    printf '### pane %s (%s)\n\n' "$label" "$cmd"
+    tmux capture-pane -p -J -t "$pid"
+    printf '\n\n'
+  done < <(tmux list-panes "${list_args[@]}" \
+    -F '#{window_index}.#{pane_index} #{pane_id} #{pane_current_command}')
+}
+
+# pick_file <src-pane> -> a file chosen via fzf (bat preview when available) from
+# the pane's cwd, printed to stdout. Runs in the current TTY (popup); empty if none.
+pick_file() {
+  local src="$1" cwd preview find_cmd
+  cwd="$(tmux display-message -p -t "$src" '#{pane_current_path}' 2>/dev/null)"
+  # Best-effort: list from the pane's cwd; if the cd fails just use the current one.
+  # shellcheck disable=SC2164
+  [ -n "$cwd" ] && cd "$cwd" 2>/dev/null || true
+  preview='cat {}'
+  command -v bat >/dev/null 2>&1 && preview='bat --color=always --style=numbers {}'
+  local fopts=(--ansi --reverse --height=100% --preview="$preview"
+    --preview-window="$(get_opt preview_window 'right,60%,wrap')")
+  if fzf --help 2>&1 | grep -q -- '--list-border'; then
+    fopts+=(--style=full --input-border --input-label=' File '
+      --preview-border --preview-label=' Preview ' --pointer='▶' --prompt='  ')
+  fi
+  find_cmd="${FZF_DEFAULT_COMMAND:-find . -type f -not -path '*/.git/*'}"
+  sh -c "$find_cmd" | fzf "${fopts[@]}"
+}
+
+# ---------------------------------------------------------------------------
+# Chrome / theming. Defaults are Solarized Osaka (yellow #b58900 accent, matching
+# the active-window highlight); every value is overridable via @summarize_*.
+# ---------------------------------------------------------------------------
+border_lines() { get_opt border_lines 'rounded'; }
+border_style() { get_opt border_style 'fg=#b58900'; }
+popup_title() { get_opt title '#[fg=#b58900,bold] Summarize '; }
+menu_body_style() { get_opt menu_style 'fg=#839496,bg=#002b36'; }
+menu_selected_style() { get_opt menu_selected 'fg=#002b36,bg=#b58900,bold'; }

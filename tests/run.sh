@@ -73,6 +73,16 @@ check 'popup_dims defaults' '80% 80%' "$(popup_dims)"
 TMUX_OPTS=([@summarize_popup_width]='70%' [@summarize_popup_height]='60%')
 check 'popup_dims overrides' '70% 60%' "$(popup_dims)"
 
+# --- theming helpers: Osaka defaults, overridable --------------------------
+TMUX_OPTS=()
+check 'border_lines default' 'rounded' "$(border_lines)"
+check 'border_style default' 'fg=#b58900' "$(border_style)"
+check 'popup_title default' '#[fg=#b58900,bold] Summarize ' "$(popup_title)"
+check 'menu_selected default' 'fg=#002b36,bg=#b58900,bold' "$(menu_selected_style)"
+TMUX_OPTS=([@summarize_border_lines]='double' [@summarize_border_style]='fg=#268bd2')
+check 'border_lines override' 'double' "$(border_lines)"
+check 'border_style override' 'fg=#268bd2' "$(border_style)"
+
 # --- shq: safe single-quoting, including embedded quotes -------------------
 check 'shq simple'    "'plain'"            "$(shq plain)"
 check 'shq url'       "'https://x?a&b'"    "$(shq 'https://x?a&b')"

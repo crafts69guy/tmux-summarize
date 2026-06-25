@@ -59,7 +59,8 @@ split)
   # summary on screen until Enter, regardless of which shell $SHELL is.
   read -r w h < <(popup_dims)
   hold="; printf '\n[done — press Enter to close]'; sh -c 'read REPLY'"
-  tmux display-popup -E -d "$cwd" -w "$w" -h "$h" -T ' Summarize ' \
+  tmux display-popup -E -d "$cwd" -w "$w" -h "$h" \
+    -b "$(border_lines)" -S "$(border_style)" -T "$(popup_title)" \
     "$shell -l -c $(shq "$line$hold")"
   ;;
 esac

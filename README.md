@@ -23,15 +23,18 @@ The summary runs through a login shell, so it inherits your normal environment
   <img src="docs/demo.gif" alt="tmux-summarize: prefix+S menu summarizing a pane into a popup" width="800">
 </p>
 
-`prefix + S` opens the picker; choose a source and the summary streams into a popup:
+`prefix + S` opens a filterable fzf picker with a live preview; choose a source
+and the summary streams into the same popup:
 
 ```text
-┌ Summarize ──────────────────┐
-│ Current pane scrollback   p  │
-│ Clipboard / selection     c  │
-│ URL or file…              i  │
-│ Cross-pane digest         d  │
-└─────────────────────────────┘
+╭ Summarize ─────────╮╭ Preview ─────────────╮
+│▶ ● pane scrollback ││ $ cargo build        │
+│  ● clipboard       ││   Compiling foo v0.1 │
+│  ● URL or path     ││   error[E0382] …     │
+│  ● pick a file     ││   …                  │
+│  ● cross-pane      ││                      │
+╰────────────────────╯╰──────────────────────╯
+ type to filter · ctrl-/ preview · enter run
 ```
 
 > No GIF yet? See [`docs/README.md`](docs/README.md) to record one (e.g. with
@@ -43,7 +46,8 @@ The summary runs through a login shell, so it inherits your normal environment
 - [`summarize`](https://github.com/steipete/summarize) on `PATH`
   (`brew install summarize` or `npm i -g @steipete/summarize`, Node 24+).
 - tmux ≥ 3.2 (`display-menu` / `display-popup`).
-- `fzf` (+ `fd` recommended) — only for the empty-prompt file picker.
+- `fzf` (+ `fd` recommended) for the source picker and file picker; `bat` for
+  file previews. (Set `@summarize_picker 'menu'` to skip fzf and use the key-menu.)
 - At least one model provider configured for `summarize` (env var or
   `~/.summarize/config.json`).
 
@@ -60,18 +64,23 @@ Then `prefix + I` to install. Manually: clone the repo and
 
 ## Usage
 
-Press **`prefix + S`** to open the menu, then:
+Press **`prefix + S`**. By default this opens a themed **fzf source picker** with
+a live preview of what each source would summarize — type to filter, `ctrl-/`
+toggles the preview, `enter` runs:
 
-| Key | Action |
-|-----|--------|
-| `p` | Summarize the current pane's scrollback |
-| `c` | Summarize the clipboard / copy-mode selection |
-| `i` | Prompt for a URL/path (empty → fzf file picker) |
-| `d` | Digest every pane in the window (or session) |
+| Source | What it summarizes |
+|--------|--------------------|
+| pane scrollback | the current pane's output |
+| clipboard | a URL or text on the clipboard / copy-mode selection |
+| URL or path | a URL/path you type |
+| pick a file | an fzf-picked file (with `bat` preview) |
+| cross-pane digest | every pane in the window (or session) |
 
-The result streams into a centered popup; press **Enter** to close it. Prefer a
-persistent pane? Set `@summarize_output 'split'` and it streams into a split that
-returns to a prompt (close with your usual pane-kill binding).
+The summary streams **into the same popup**; press **Enter** to close it.
+
+Prefer keys over fzf? Set `@summarize_picker 'menu'` for a quick themed key-menu
+(`p`/`c`/`i`/`d`). Either way, the direct-key path and menu honor
+`@summarize_output` (`popup` default, or `split` for a persistent pane).
 
 ## Options
 
@@ -79,7 +88,8 @@ All options use the `@summarize_*` namespace. Set them in `tmux.conf`.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `@summarize_menu_key` | `S` | Prefix key that opens the menu |
+| `@summarize_menu_key` | `S` | Prefix key that opens the picker/menu |
+| `@summarize_picker` | `fzf` | `fzf` source-picker, or `menu` key-menu |
 | `@summarize_command` | `summarize` | CLI to invoke (e.g. a wrapper/shim) |
 | `@summarize_model` | *(unset)* | `--model provider/model`; unset → summarize decides |
 | `@summarize_length` | *(unset)* | `--length short\|medium\|long\|xl\|xxl` |
@@ -93,7 +103,22 @@ All options use the `@summarize_*` namespace. Set them in `tmux.conf`.
 | `@summarize_split_size` | `40%` | Split size (when `output = split`) |
 | `@summarize_pane_lines` | `2000` | Scrollback to capture (`-` = all, or a number) |
 | `@summarize_digest_scope` | `window` | `window` or `session` |
-| `@summarize_pane_key` `@summarize_clip_key` `@summarize_input_key` `@summarize_digest_key` | *(unset)* | Optional direct bindings that skip the menu |
+| `@summarize_pane_key` `@summarize_clip_key` `@summarize_input_key` `@summarize_digest_key` | *(unset)* | Optional direct bindings that skip the picker |
+
+### Picker & theming (Solarized Osaka defaults)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `@summarize_fzf_opts` | *(unset)* | Extra fzf flags, appended last (override anything) |
+| `@summarize_preview_window` | `right,60%,wrap` | fzf preview window for the picker/file picker |
+| `@summarize_border_lines` | `rounded` | Popup/menu border (`rounded`/`single`/`double`/…) |
+| `@summarize_border_style` | `fg=#b58900` | Popup/menu border style (yellow accent) |
+| `@summarize_title` | `#[fg=#b58900,bold] Summarize ` | Popup/menu title |
+| `@summarize_menu_style` | `fg=#839496,bg=#002b36` | Body style (`menu` picker only) |
+| `@summarize_menu_selected` | `fg=#002b36,bg=#b58900,bold` | Selected row (`menu` picker only) |
+
+The fzf picker inherits your `FZF_DEFAULT_OPTS` theme automatically (only the
+layout is pinned), so it matches the rest of your fzf UI out of the box.
 
 Example:
 
@@ -102,6 +127,7 @@ set -g @plugin 'crafts69guy/tmux-summarize'
 set -g @summarize_length 'medium'
 set -g @summarize_split_size '45%'
 set -g @summarize_pane_key 'M-s'   # prefix+M-s → summarize pane directly
+# set -g @summarize_picker 'menu'  # prefer the quick key-menu over fzf
 ```
 
 ## Routing through 9router (or any OpenAI-compatible proxy)
