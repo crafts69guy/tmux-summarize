@@ -40,7 +40,7 @@ else
   cwd="$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)"
 fi
 [ -z "$cwd" ] && cwd="$PWD"
-shell="${SHELL:-/bin/sh}"
+shell="$(login_shell)"
 
 case "$(get_opt output 'popup')" in
 split)

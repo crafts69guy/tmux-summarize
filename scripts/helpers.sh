@@ -54,6 +54,20 @@ scratch_dir() {
 # new_tmpfile <name> -> a fresh temp file under scratch_dir, prefixed with <name>.
 new_tmpfile() { mktemp "$(scratch_dir)/${1:-tmp}.XXXXXX"; }
 
+# login_shell -> the shell to run a popup summary through. Prefers an explicit
+# @summarize_shell, then tmux's default-shell (what panes actually use), then
+# $SHELL. This matters when the interactive shell differs from $SHELL — e.g. fish
+# panes under a zsh $SHELL: run as a login shell it loads the same environment as
+# a normal pane, including any OPENAI_BASE_URL used for proxy routing.
+login_shell() {
+  local s
+  s="$(get_opt shell '')"
+  [ -n "$s" ] && { printf '%s' "$s"; return; }
+  s="$(tmux show-option -gv default-shell 2>/dev/null)"
+  [ -n "$s" ] && { printf '%s' "$s"; return; }
+  printf '%s' "${SHELL:-/bin/sh}"
+}
+
 # popup_dims -> "<width> <height>" for display-popup, from @summarize_popup_width /
 # @summarize_popup_height (defaults 80%/80%). Read with: read -r w h < <(popup_dims)
 popup_dims() {

@@ -64,6 +64,7 @@ All options use the `@summarize_*` namespace. Set them in `tmux.conf`.
 | `@summarize_language` | *(unset)* | `--language <lang>` |
 | `@summarize_extra_args` | *(unset)* | Raw flags appended verbatim |
 | `@summarize_output` | `popup` | Where output goes: `popup` or `split` |
+| `@summarize_shell` | *(tmux `default-shell`)* | Login shell the popup runs through (loads your env) |
 | `@summarize_popup_width` | `80%` | Popup width (when `output = popup`) |
 | `@summarize_popup_height` | `80%` | Popup height (when `output = popup`) |
 | `@summarize_split` | `h` | Split direction `h`/`v` (when `output = split`) |

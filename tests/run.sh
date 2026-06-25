@@ -61,6 +61,12 @@ check 'is_url plain text' no  "$(bool is_url 'just some words')"
 check 'is_url path'       no  "$(bool is_url '/Users/me/notes.md')"
 check 'is_url multiline'  no  "$(bool is_url $'https://a.com\nhttps://b.com')"
 
+# --- login_shell: @summarize_shell > default-shell > $SHELL ----------------
+TMUX_OPTS=([default-shell]='/opt/homebrew/bin/fish')
+check 'login_shell from default-shell' '/opt/homebrew/bin/fish' "$(login_shell)"
+TMUX_OPTS=([@summarize_shell]='/usr/bin/zsh' [default-shell]='/opt/homebrew/bin/fish')
+check 'login_shell override wins' '/usr/bin/zsh' "$(login_shell)"
+
 # --- popup_dims: defaults and overrides ------------------------------------
 TMUX_OPTS=()
 check 'popup_dims defaults' '80% 80%' "$(popup_dims)"
