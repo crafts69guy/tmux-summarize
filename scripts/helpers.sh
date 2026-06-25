@@ -53,3 +53,30 @@ scratch_dir() {
 
 # new_tmpfile <name> -> a fresh temp file under scratch_dir, prefixed with <name>.
 new_tmpfile() { mktemp "$(scratch_dir)/${1:-tmp}.XXXXXX"; }
+
+# popup_dims -> "<width> <height>" for display-popup, from @summarize_popup_width /
+# @summarize_popup_height (defaults 80%/80%). Read with: read -r w h < <(popup_dims)
+popup_dims() {
+  printf '%s %s' \
+    "$(get_opt popup_width '80%')" \
+    "$(get_opt popup_height '80%')"
+}
+
+# wait_pane_ready <pane-id>
+# Best-effort wait until a freshly split pane's interactive shell has started, so
+# send-keys isn't swallowed by shell startup. Polls #{pane_current_command} for a
+# known shell name, then settles briefly. Bounded (~2s) and always returns 0.
+wait_pane_ready() {
+  local p="$1" cmd _
+  for _ in $(seq 1 40); do
+    cmd="$(tmux display-message -p -t "$p" '#{pane_current_command}' 2>/dev/null)"
+    case "$cmd" in
+    fish | bash | zsh | sh | dash | -fish | -bash | -zsh)
+      sleep 0.05
+      return 0
+      ;;
+    esac
+    sleep 0.05
+  done
+  return 0
+}

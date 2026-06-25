@@ -1,25 +1,26 @@
 #!/usr/bin/env bash
 # Summarize a typed URL/path, or fzf-pick a file when the prompt is left empty.
-# Args: <src-pane> [value]
-#   With no <value> it opens a tmux command-prompt and re-invokes itself with the
-#   typed text. An empty value falls back to an fzf file picker in the pane's cwd.
+# Args: <src-pane> [stage]
+#   stage 'prompt' (default) opens a command-prompt; on submit it re-invokes this
+#   script with stage 'submit'. The typed text is passed through a tmux option
+#   (not interpolated into the callback), so URLs with shell metacharacters are safe.
 set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 . "$DIR/helpers.sh"
 
 src="${1:?input.sh: missing src-pane}"
+stage="${2:-prompt}"
 
-# First call (no value arg): ask for input, then re-enter with the typed text.
-# tmux substitutes %% with what the user typed; it is single-quoted so URL query
-# strings (?a&b) reach this script intact.
-if [ "$#" -lt 2 ]; then
+if [ "$stage" = prompt ]; then
   tmux command-prompt -p 'summarize (URL/path; empty = pick file):' \
-    "run-shell \"$DIR/input.sh $src '%%'\""
+    "set -g @summarize_query '%%' ; run-shell '$DIR/input.sh $src submit'"
   exit 0
 fi
 
-value="$2"
+value="$(tmux show-option -gqv @summarize_query 2>/dev/null)"
+tmux set -gu @summarize_query 2>/dev/null || true
+
 if [ -n "$value" ]; then
   exec "$DIR/run.sh" arg "$value" "$src"
 fi

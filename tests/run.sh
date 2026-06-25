@@ -61,6 +61,12 @@ check 'is_url plain text' no  "$(bool is_url 'just some words')"
 check 'is_url path'       no  "$(bool is_url '/Users/me/notes.md')"
 check 'is_url multiline'  no  "$(bool is_url $'https://a.com\nhttps://b.com')"
 
+# --- popup_dims: defaults and overrides ------------------------------------
+TMUX_OPTS=()
+check 'popup_dims defaults' '80% 80%' "$(popup_dims)"
+TMUX_OPTS=([@summarize_popup_width]='70%' [@summarize_popup_height]='60%')
+check 'popup_dims overrides' '70% 60%' "$(popup_dims)"
+
 # --- shq: safe single-quoting, including embedded quotes -------------------
 check 'shq simple'    "'plain'"            "$(shq plain)"
 check 'shq url'       "'https://x?a&b'"    "$(shq 'https://x?a&b')"

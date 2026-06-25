@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck
+        run: shellcheck -x --source-path=SCRIPTDIR summarize.tmux scripts/*.sh tests/run.sh
+
+      - name: Unit tests
+        run: bash tests/run.sh

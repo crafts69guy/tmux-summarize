@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Summarize the current pane's scrollback. Arg: <src-pane>
-# @summarize_pane_lines controls how much history (default '-' = full scrollback;
-# a number N captures the last N lines, e.g. set -g @summarize_pane_lines '500').
+# @summarize_pane_lines bounds how much history is captured (default 2000 lines)
+# to keep requests cheap; set '-' for the full scrollback, or a number N for the
+# last N lines, e.g. set -g @summarize_pane_lines '500'.
 set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 . "$DIR/helpers.sh"
 
 src="${1:?pane.sh: missing src-pane}"
-lines="$(get_opt pane_lines '-')"
+lines="$(get_opt pane_lines '2000')"
 tmp="$(new_tmpfile pane.txt)"
 
 # -J joins wrapped lines; -S - starts at the top of history (full scrollback).

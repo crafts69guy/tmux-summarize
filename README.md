@@ -2,7 +2,7 @@
 
 Summarize the context you already have in tmux with
 [`@steipete/summarize`](https://github.com/steipete/summarize), streamed into a
-split pane — no copy-pasting into a browser.
+popup (or split pane) — no copy-pasting into a browser.
 
 From a single menu (`prefix + S`) you can summarize:
 
@@ -11,9 +11,9 @@ From a single menu (`prefix + S`) you can summarize:
 - **A typed URL or path**, or an fzf-picked file (PDFs, docs, audio, video).
 - **A cross-pane digest** — every pane in the window/session at once.
 
-The summary runs in the new pane's *interactive shell*, so it inherits your
-normal environment (API keys, and any `OPENAI_BASE_URL` for routing through a
-local proxy like [9router](https://github.com/decolua/9router)) — see
+The summary runs through a login shell, so it inherits your normal environment
+(API keys, and any `OPENAI_BASE_URL` for routing through a local proxy like
+[9router](https://github.com/decolua/9router)) — see
 [Routing](#routing-through-9router-or-any-openai-compatible-proxy).
 
 ## Requirements
@@ -47,8 +47,9 @@ Press **`prefix + S`** to open the menu, then:
 | `i` | Prompt for a URL/path (empty → fzf file picker) |
 | `d` | Digest every pane in the window (or session) |
 
-The result streams into a split pane and stays at a shell prompt when done —
-close it with your usual pane-kill binding.
+The result streams into a centered popup; press **Enter** to close it. Prefer a
+persistent pane? Set `@summarize_output 'split'` and it streams into a split that
+returns to a prompt (close with your usual pane-kill binding).
 
 ## Options
 
@@ -62,9 +63,12 @@ All options use the `@summarize_*` namespace. Set them in `tmux.conf`.
 | `@summarize_length` | *(unset)* | `--length short\|medium\|long\|xl\|xxl` |
 | `@summarize_language` | *(unset)* | `--language <lang>` |
 | `@summarize_extra_args` | *(unset)* | Raw flags appended verbatim |
-| `@summarize_split` | `h` | Split direction: `h` (horizontal) or `v` |
-| `@summarize_split_size` | `40%` | Split pane size |
-| `@summarize_pane_lines` | `-` | Scrollback to capture (`-` = all, or a number) |
+| `@summarize_output` | `popup` | Where output goes: `popup` or `split` |
+| `@summarize_popup_width` | `80%` | Popup width (when `output = popup`) |
+| `@summarize_popup_height` | `80%` | Popup height (when `output = popup`) |
+| `@summarize_split` | `h` | Split direction `h`/`v` (when `output = split`) |
+| `@summarize_split_size` | `40%` | Split size (when `output = split`) |
+| `@summarize_pane_lines` | `2000` | Scrollback to capture (`-` = all, or a number) |
 | `@summarize_digest_scope` | `window` | `window` or `session` |
 | `@summarize_pane_key` `@summarize_clip_key` `@summarize_input_key` `@summarize_digest_key` | *(unset)* | Optional direct bindings that skip the menu |
 

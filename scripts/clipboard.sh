@@ -26,8 +26,18 @@ if [ -z "$content" ]; then
   exit 0
 fi
 
-if is_url "$content" || [ -f "$content" ]; then
+# A bare URL goes straight to summarize. A file path is resolved against the
+# source pane's cwd (not run-shell's), so a relative path on the clipboard works.
+if is_url "$content"; then
   exec "$DIR/run.sh" arg "$content" "$src"
+fi
+cwd="$(tmux display-message -p -t "$src" '#{pane_current_path}' 2>/dev/null)"
+case "$content" in
+/*) resolved="$content" ;;
+*) resolved="${cwd:+$cwd/}$content" ;;
+esac
+if [ -f "$resolved" ]; then
+  exec "$DIR/run.sh" arg "$resolved" "$src"
 fi
 
 tmp="$(new_tmpfile clip.txt)"
