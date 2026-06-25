@@ -16,6 +16,28 @@ The summary runs through a login shell, so it inherits your normal environment
 [9router](https://github.com/decolua/9router)) — see
 [Routing](#routing-through-9router-or-any-openai-compatible-proxy).
 
+## Demo
+
+<!-- Recorded asset lives in docs/ — see docs/README.md for how to (re)generate it. -->
+<p align="center">
+  <img src="docs/demo.gif" alt="tmux-summarize: prefix+S menu summarizing a pane into a popup" width="800">
+</p>
+
+`prefix + S` opens the picker; choose a source and the summary streams into a popup:
+
+```text
+┌ Summarize ──────────────────┐
+│ Current pane scrollback   p  │
+│ Clipboard / selection     c  │
+│ URL or file…              i  │
+│ Cross-pane digest         d  │
+└─────────────────────────────┘
+```
+
+> No GIF yet? See [`docs/README.md`](docs/README.md) to record one (e.g. with
+> [`vhs`](https://github.com/charmbracelet/vhs)) or drop in a `docs/demo.gif` /
+> `docs/popup.png` of your own.
+
 ## Requirements
 
 - [`summarize`](https://github.com/steipete/summarize) on `PATH`
