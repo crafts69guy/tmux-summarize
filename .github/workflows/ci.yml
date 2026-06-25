@@ -10,6 +10,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install shellcheck
+        run: shellcheck --version || (sudo apt-get update && sudo apt-get install -y shellcheck)
+
       - name: ShellCheck
         run: shellcheck -x --source-path=SCRIPTDIR summarize.tmux scripts/*.sh tests/run.sh
 
