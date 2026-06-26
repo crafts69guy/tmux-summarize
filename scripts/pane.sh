@@ -23,4 +23,4 @@ if [ ! -s "$tmp" ]; then
   tmux display-message 'summarize: pane has no scrollback to summarize'
   exit 0
 fi
-exec "$DIR/run.sh" stdin "$tmp" "$src"
+exec "$DIR/run.sh" stdin "$tmp" "$src" pane

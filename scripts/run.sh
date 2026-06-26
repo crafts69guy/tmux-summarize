@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 # Core: build the summarize command and stream it into a popup (default) or split.
-# Args: <arg|stdin> <payload> [src-pane]
+# Args: <arg|stdin> <payload> [src-pane] [label]
 #   arg    payload is a URL or file path -> summarize <payload>
 #   stdin  payload is a temp file        -> summarize - < <payload>
 #   src-pane anchors the output's cwd and placement (default: active pane).
+#   label    source keyword (pane|clip|url|file|digest) for the summary header.
 set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=helpers.sh
 . "$DIR/helpers.sh"
 
-mode="${1:?usage: run.sh <arg|stdin> <payload> [src-pane]}"
+mode="${1:?usage: run.sh <arg|stdin> <payload> [src-pane] [label]}"
 payload="${2:?run.sh: missing payload}"
 src="${3:-}"
+label="${4:-}"
 
 # Fail loudly if the CLI is missing, instead of spawning a pane/popup that just
 # prints "command not found". ${bin%% *} tests the binary, not any flags.
@@ -51,16 +53,20 @@ split)
   size="$(get_opt split_size '40%')"
   new="$(tmux split-window "$sflag" -l "$size" -c "$cwd" -P -F '#{pane_id}')"
   wait_pane_ready "$new"
-  tmux send-keys -t "$new" "$line" Enter
+  # frame_command (hold=no) prepends the shared header and returns to the prompt
+  # when summarize finishes. send-keys can't carry raw ESC bytes, so the split
+  # header is plain text; the popup path below keeps the full coloured chrome.
+  hdr="$(printf '▌ Summarize — %s' "$(source_label_plain "$label")")"
+  tmux send-keys -t "$new" "printf '%s\\n\\n' $(shq "$hdr"); $line" Enter
   ;;
 *)
   # Popup: run through a login shell so the user's env (OPENAI_BASE_URL, keys) is
-  # loaded just like a normal pane. The shell-agnostic `sh -c read` hold keeps the
-  # summary on screen until Enter, regardless of which shell $SHELL is.
+  # loaded just like a normal pane. frame_command adds the shared header/footer and
+  # holds the summary on screen until Enter, regardless of which shell $SHELL is.
   read -r w h < <(popup_dims)
-  hold="; printf '\n[done — press Enter to close]'; sh -c 'read REPLY'"
+  wrapped="$(frame_command "$line" "$label" yes)"
   tmux display-popup -E -d "$cwd" -w "$w" -h "$h" \
     -b "$(border_lines)" -S "$(border_style)" -T "$(popup_title)" \
-    "$shell -l -c $(shq "$line$hold")"
+    "$shell -l -c $(shq "$wrapped")"
   ;;
 esac

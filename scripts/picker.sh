@@ -17,13 +17,14 @@ if ! command -v fzf >/dev/null 2>&1; then
   exit 0
 fi
 
-# choice \t coloured-icon+label \t hint   (icon colours echo the picker palette)
+# choice \t coloured-icon+label \t hint   (label/icon come from source_label so the
+# picker and the summary header share one palette — see helpers.sh)
 rows() {
-  printf '%s\t%s\t%s\n' pane $'\033[34m●\033[0m pane scrollback' 'this pane'\''s output'
-  printf '%s\t%s\t%s\n' clip $'\033[36m●\033[0m clipboard' 'URL or text on the clipboard'
-  printf '%s\t%s\t%s\n' url $'\033[33m●\033[0m URL or path' 'type a URL or file path'
-  printf '%s\t%s\t%s\n' file $'\033[35m●\033[0m pick a file' 'fzf a file in this directory'
-  printf '%s\t%s\t%s\n' digest $'\033[32m●\033[0m cross-pane digest' 'every pane at once'
+  printf '%s\t%s\t%s\n' pane   "$(source_label pane)"   'this pane'\''s output'
+  printf '%s\t%s\t%s\n' clip   "$(source_label clip)"   'URL or text on the clipboard'
+  printf '%s\t%s\t%s\n' url    "$(source_label url)"    'type a URL or file path'
+  printf '%s\t%s\t%s\n' file   "$(source_label file)"   'fzf a file in this directory'
+  printf '%s\t%s\t%s\n' digest "$(source_label digest)" 'every pane at once'
 }
 
 fzf_opts=(
@@ -85,7 +86,7 @@ clip)
   fi
   ;;
 url)
-  printf '\n  %s' "$(printf '\033[1;33mSummarize URL or path:\033[0m ')"
+  printf '\n  %sSummarize URL or path:%s ' "$(accent_ansi)" "$(reset_ansi)"
   IFS= read -r payload || exit 0
   [ -z "$payload" ] && exit 0
   mode=arg
@@ -119,8 +120,7 @@ arg) line="$base $(shq "$payload")" ;;
 stdin) line="$base - < $(shq "$payload")" ;;
 esac
 
-# Replace the picker with the summary in this same popup, via a login shell so the
-# environment (OPENAI_BASE_URL, keys) matches a normal pane. The shell-agnostic
-# `sh -c read` hold keeps the summary on screen until Enter.
-hold="; printf '\n[done — press Enter to close]'; sh -c 'read REPLY'"
-exec "$(login_shell)" -l -c "$line$hold"
+# Replace the picker with the framed summary in this same popup, via a login shell
+# so the environment (OPENAI_BASE_URL, keys) matches a normal pane. frame_command
+# adds the shared header/footer and holds the screen until Enter.
+exec "$(login_shell)" -l -c "$(frame_command "$line" "$choice" yes)"

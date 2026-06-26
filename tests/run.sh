@@ -88,6 +88,33 @@ check 'shq simple'    "'plain'"            "$(shq plain)"
 check 'shq url'       "'https://x?a&b'"    "$(shq 'https://x?a&b')"
 check 'shq embedded'  "'it'\''s'"          "$(shq "it's")"
 
+# --- source_label_plain: one place names every source ----------------------
+TMUX_OPTS=()
+check 'label pane'    'pane scrollback'    "$(source_label_plain pane)"
+check 'label clip'    'clipboard'          "$(source_label_plain clip)"
+check 'label digest'  'cross-pane digest'  "$(source_label_plain digest)"
+check 'label empty'   'source'             "$(source_label_plain '')"
+
+# has_substr <haystack> <needle> -> yes/no, for asserting on chrome that carries
+# ANSI escapes we don't want to pin byte-for-byte.
+has_substr() { case "$1" in *"$2"*) echo yes ;; *) echo no ;; esac; }
+
+# --- summary_header: echoes the chosen source + resolved model -------------
+TMUX_OPTS=([@summarize_model]='openai/gpt-5-mini')
+hdr="$(summary_header "$(source_label pane)")"
+check 'header has model'  yes "$(has_substr "$hdr" 'openai/gpt-5-mini')"
+check 'header has source' yes "$(has_substr "$hdr" 'pane scrollback')"
+TMUX_OPTS=()
+check 'header model auto'  yes "$(has_substr "$(summary_header x)" 'auto')"
+
+# --- frame_command: wraps inner cmd; holds only when asked -----------------
+TMUX_OPTS=()
+frm="$(frame_command 'summarize -' pane yes)"
+check 'frame keeps inner' yes "$(has_substr "$frm" 'summarize -')"
+check 'frame holds'       yes "$(has_substr "$frm" 'read REPLY')"
+frm="$(frame_command 'summarize -' pane no)"
+check 'frame no-hold'     no  "$(has_substr "$frm" 'read REPLY')"
+
 # --- summary ---------------------------------------------------------------
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

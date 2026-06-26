@@ -16,4 +16,4 @@ if [ ! -s "$tmp" ]; then
   tmux display-message 'summarize: nothing to digest'
   exit 0
 fi
-exec "$DIR/run.sh" stdin "$tmp" "$src"
+exec "$DIR/run.sh" stdin "$tmp" "$src" digest

@@ -22,17 +22,19 @@ value="$(tmux show-option -gqv @summarize_query 2>/dev/null)"
 tmux set -gu @summarize_query 2>/dev/null || true
 
 if [ -n "$value" ]; then
-  exec "$DIR/run.sh" arg "$value" "$src"
+  exec "$DIR/run.sh" arg "$value" "$src" url
 fi
 
-# Empty input -> fzf file picker. display-popup -E blocks until fzf exits, so we
-# stash the selection in a temp file and read it back here.
+# Empty input -> themed fzf file picker (same chrome as the source picker's file
+# choice, via pickfile.sh -> pick_file). display-popup -E blocks until fzf exits,
+# so we stash the selection in a temp file and read it back here.
 cwd="$(tmux display-message -p -t "$src" '#{pane_current_path}' 2>/dev/null)"
 out="$(new_tmpfile pick.txt)"
 tmux display-popup -d "${cwd:-$PWD}" -E \
-  "${FZF_DEFAULT_COMMAND:-find . -type f -not -path '*/.git/*'} | fzf > '$out'"
+  -b "$(border_lines)" -S "$(border_style)" -T "$(popup_title)" \
+  "$DIR/pickfile.sh '$src' > '$out'"
 file="$(cat "$out" 2>/dev/null)"
 rm -f "$out"
 
 [ -z "$file" ] && exit 0
-exec "$DIR/run.sh" arg "$file" "$src"
+exec "$DIR/run.sh" arg "$file" "$src" file

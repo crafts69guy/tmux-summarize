@@ -142,11 +142,17 @@ pick_file() {
   [ -n "$cwd" ] && cd "$cwd" 2>/dev/null || true
   preview='cat {}'
   command -v bat >/dev/null 2>&1 && preview='bat --color=always --style=numbers {}'
-  local fopts=(--ansi --reverse --height=100% --preview="$preview"
-    --preview-window="$(get_opt preview_window 'right,60%,wrap')")
+  local fopts=(--ansi --reverse --cycle --height=100% --preview="$preview"
+    --preview-window="$(get_opt preview_window 'right,60%,wrap')"
+    --bind='ctrl-/:toggle-preview')
+  # Mirror the source picker's layout (picker.sh) so both file/source screens match.
   if fzf --help 2>&1 | grep -q -- '--list-border'; then
-    fopts+=(--style=full --input-border --input-label=' File '
-      --preview-border --preview-label=' Preview ' --pointer='▶' --prompt='  ')
+    fopts+=(--style=full
+      --input-border   --input-label=' File '
+      --list-border    --list-label=' Files '
+      --preview-border --preview-label=' Preview '
+      --color='label:bold' --pointer='▶' --prompt='  '
+      --header='enter: summarize · ctrl-/: toggle preview')
   fi
   find_cmd="${FZF_DEFAULT_COMMAND:-find . -type f -not -path '*/.git/*'}"
   sh -c "$find_cmd" | fzf "${fopts[@]}"
@@ -161,3 +167,79 @@ border_style() { get_opt border_style 'fg=#b58900'; }
 popup_title() { get_opt title '#[fg=#b58900,bold] Summarize '; }
 menu_body_style() { get_opt menu_style 'fg=#839496,bg=#002b36'; }
 menu_selected_style() { get_opt menu_selected 'fg=#002b36,bg=#b58900,bold'; }
+
+# ---------------------------------------------------------------------------
+# Source identity + output chrome — the single source of truth so every screen
+# (fzf picker, key-menu, popup/split summary) names a source identically and the
+# run stage matches the picker. ANSI escapes (not tmux #[...] tags) because the
+# summary runs inside a shell, not a tmux format context.
+# ---------------------------------------------------------------------------
+
+# accent_ansi / dim_ansi / reset_ansi -> the output palette. The accent default
+# is Solarized Osaka yellow (#b58900 ≈ 256-colour 136), echoing the picker border;
+# override with @summarize_accent_color / @summarize_dim_color (256-colour codes).
+accent_ansi() { printf '\033[1;38;5;%sm' "$(get_opt accent_color '136')"; }
+dim_ansi()    { printf '\033[38;5;%sm'  "$(get_opt dim_color '240')"; }
+reset_ansi()  { printf '\033[0m'; }
+
+# source_label_plain <choice> -> the bare source name. Unknown -> the choice
+# verbatim (or 'source' when empty), so callers always get something printable.
+source_label_plain() {
+  case "$1" in
+  pane)   printf 'pane scrollback' ;;
+  clip)   printf 'clipboard' ;;
+  url)    printf 'URL or path' ;;
+  file)   printf 'file' ;;
+  digest) printf 'cross-pane digest' ;;
+  *)      printf '%s' "${1:-source}" ;;
+  esac
+}
+
+# source_label <choice> -> the coloured "● name" used in picker rows AND the
+# summary header, so the icon palette lives in exactly one place.
+source_label() {
+  local r icon
+  r="$(reset_ansi)"
+  case "$1" in
+  pane)   icon=$'\033[34m●' ;;
+  clip)   icon=$'\033[36m●' ;;
+  url)    icon=$'\033[33m●' ;;
+  file)   icon=$'\033[35m●' ;;
+  digest) icon=$'\033[32m●' ;;
+  *)      icon=$'\033[1;33m●' ;;
+  esac
+  printf '%s%s %s' "$icon" "$r" "$(source_label_plain "$1")"
+}
+
+# summary_header <coloured-label> -> banner printed before a summary streams,
+# echoing the chosen source and the resolved model.
+summary_header() {
+  local a d r model
+  a="$(accent_ansi)" d="$(dim_ansi)" r="$(reset_ansi)"
+  model="$(get_opt model '')"; [ -n "$model" ] || model='auto'
+  printf '%s▌ Summarize%s\n' "$a" "$r"
+  printf '  %s\n' "$1"
+  printf '  %smodel%s  %s\n\n' "$d" "$r" "$model"
+}
+
+# summary_footer -> themed hold line printed after a summary.
+summary_footer() {
+  local a r
+  a="$(accent_ansi)" r="$(reset_ansi)"
+  printf '\n%s──── done ────%s  %senter%s close\n' "$a" "$r" "$a" "$r"
+}
+
+# frame_command <inner-cmd> <choice> <hold:yes|no> -> a shell command line that
+# prints the header, runs <inner-cmd>, then the footer. With hold=yes it waits
+# for Enter (popup, where the screen vanishes on exit); hold=no returns to the
+# prompt (split pane). The header/footer text is rendered here (bash) and embedded
+# as literal printf args, so it works whatever login shell runs the line (fish/zsh).
+frame_command() {
+  local inner="$1" choice="$2" hold="${3:-yes}" hdr ftr out
+  # printf-x trick preserves the trailing blank lines that $() would strip.
+  hdr="$(summary_header "$(source_label "$choice")"; printf x)"; hdr="${hdr%x}"
+  ftr="$(summary_footer; printf x)"; ftr="${ftr%x}"
+  out="printf '%s' $(shq "$hdr"); $inner; printf '%s' $(shq "$ftr")"
+  [ "$hold" = yes ] && out="$out; sh -c 'read REPLY'"
+  printf '%s' "$out"
+}

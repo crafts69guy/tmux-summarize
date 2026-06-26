@@ -21,7 +21,7 @@ fi
 # A bare URL goes straight to summarize. A file path is resolved against the
 # source pane's cwd (not run-shell's), so a relative path on the clipboard works.
 if is_url "$content"; then
-  exec "$DIR/run.sh" arg "$content" "$src"
+  exec "$DIR/run.sh" arg "$content" "$src" clip
 fi
 cwd="$(tmux display-message -p -t "$src" '#{pane_current_path}' 2>/dev/null)"
 case "$content" in
@@ -29,9 +29,9 @@ case "$content" in
 *) resolved="${cwd:+$cwd/}$content" ;;
 esac
 if [ -f "$resolved" ]; then
-  exec "$DIR/run.sh" arg "$resolved" "$src"
+  exec "$DIR/run.sh" arg "$resolved" "$src" clip
 fi
 
 tmp="$(new_tmpfile clip.txt)"
 printf '%s' "$content" >"$tmp"
-exec "$DIR/run.sh" stdin "$tmp" "$src"
+exec "$DIR/run.sh" stdin "$tmp" "$src" clip
