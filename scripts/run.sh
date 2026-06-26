@@ -33,9 +33,6 @@ stdin) line="$base - < $(shq "$payload")" ;;
   exit 1
   ;;
 esac
-# Pretty-render the markdown through glow/bat (default; @summarize_render none for
-# raw streaming). The pipe binds after summarize's own redirect.
-line="$line $(render_pipe)"
 
 # Run the summary from the source pane's directory so relative work resolves the
 # same way it would in that pane.
@@ -56,9 +53,10 @@ split)
   size="$(get_opt split_size '40%')"
   new="$(tmux split-window "$sflag" -l "$size" -c "$cwd" -P -F '#{pane_id}')"
   wait_pane_ready "$new"
-  # frame_command (hold=no) prepends the shared header and returns to the prompt
-  # when summarize finishes. send-keys can't carry raw ESC bytes, so the split
-  # header is plain text; the popup path below keeps the full coloured chrome.
+  # A real pane already has scrollback (copy-mode), so render inline — no pager.
+  # send-keys can't carry raw ESC bytes, so the split header is plain text; the
+  # popup path keeps the full coloured chrome.
+  line="$line $(render_fragment "$(resolve_renderer)" no)"
   hdr="$(printf '▌ Summarize — %s' "$(source_label_plain "$label")")"
   tmux send-keys -t "$new" "printf '%s\\n\\n' $(shq "$hdr"); $line" Enter
   ;;
@@ -67,7 +65,7 @@ split)
   # loaded just like a normal pane. frame_command adds the shared header/footer and
   # holds the summary on screen until Enter, regardless of which shell $SHELL is.
   read -r w h < <(popup_dims)
-  wrapped="$(frame_command "$line" "$label" yes)"
+  wrapped="$(frame_command "$line" "$label")"
   tmux display-popup -E -d "$cwd" -w "$w" -h "$h" \
     -b "$(border_lines)" -S "$(border_style)" -T "$(popup_title)" \
     "$shell -l -c $(shq "$wrapped")"

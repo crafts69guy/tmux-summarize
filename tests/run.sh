@@ -107,20 +107,29 @@ check 'header has source' yes "$(has_substr "$hdr" 'pane scrollback')"
 TMUX_OPTS=()
 check 'header model auto'  yes "$(has_substr "$(summary_header x)" 'auto')"
 
-# --- frame_command: wraps inner cmd; holds only when asked -----------------
+# --- render_fragment: inline (no pager) vs paged variants ------------------
 TMUX_OPTS=()
-frm="$(frame_command 'summarize -' pane yes)"
-check 'frame keeps inner' yes "$(has_substr "$frm" 'summarize -')"
-check 'frame holds'       yes "$(has_substr "$frm" 'read REPLY')"
-frm="$(frame_command 'summarize -' pane no)"
-check 'frame no-hold'     no  "$(has_substr "$frm" 'read REPLY')"
+check 'frag glow inline' '| glow -'  "$(render_fragment glow no)"
+check 'frag glow paged'  '| glow -p' "$(render_fragment glow yes)"
+check 'frag bat inline'  '| bat --language=markdown --style=plain --color=always --paging=never'  "$(render_fragment bat no)"
+check 'frag bat paged'   '| bat --language=markdown --style=plain --color=always --paging=always' "$(render_fragment bat yes)"
+check 'frag none'        '' "$(render_fragment '' no)"
 
-# --- render: glow/bat by default, opt out with none ------------------------
-check 'render frag glow' '| glow -' "$(render_fragment glow)"
-check 'render frag bat'  '| bat --language=markdown --style=plain --color=always --paging=never' "$(render_fragment bat)"
-check 'render frag none' '' "$(render_fragment '')"
+# --- resolve_renderer: explicit none always resolves to none ---------------
 TMUX_OPTS=([@summarize_render]='none')
-check 'render none opt'  '' "$(render_pipe)"
+check 'resolve none' 'none' "$(resolve_renderer)"
+
+# --- frame_command: pages for scrollback by default; read-hold when off -----
+# (render=none keeps the popup path deterministic regardless of glow/bat install.)
+TMUX_OPTS=([@summarize_render]='none')
+frm="$(frame_command 'summarize -' pane)"
+check 'frame keeps inner'  yes "$(has_substr "$frm" 'summarize -')"
+check 'frame pages'        yes "$(has_substr "$frm" '| less -R')"
+check 'frame no read-hold' no  "$(has_substr "$frm" 'read REPLY')"
+TMUX_OPTS=([@summarize_render]='none' [@summarize_pager]='off')
+frm="$(frame_command 'summarize -' pane)"
+check 'frame off holds'    yes "$(has_substr "$frm" 'read REPLY')"
+check 'frame off no pager' no  "$(has_substr "$frm" 'less -R')"
 
 # --- summary ---------------------------------------------------------------
 printf '\n%d passed, %d failed\n' "$pass" "$fail"

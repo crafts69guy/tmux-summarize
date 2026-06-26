@@ -114,7 +114,8 @@ All options use the `@summarize_*` namespace. Set them in `tmux.conf`.
 | `@summarize_border_lines` | `rounded` | Popup/menu border (`rounded`/`single`/`double`/…) |
 | `@summarize_border_style` | `fg=#b58900` | Popup/menu border style (yellow accent) |
 | `@summarize_title` | `#[fg=#b58900,bold] Summarize ` | Popup/menu title |
-| `@summarize_render` | `auto` | Pretty-render the summary: `auto` (glow → bat → raw), `glow`, `bat`, or `none` for raw streaming |
+| `@summarize_render` | `auto` | Pretty-render the summary: `auto` (glow → bat → raw), `glow`, `bat`, or `none` |
+| `@summarize_pager` | `on` | Show the popup summary in a scrollable pager; `off` for a static read-hold |
 | `@summarize_accent_color` | `136` | 256-colour accent for the summary header/footer (Osaka yellow) |
 | `@summarize_dim_color` | `240` | 256-colour dim for header labels |
 | `@summarize_menu_style` | `fg=#839496,bg=#002b36` | Body style (`menu` picker only) |
@@ -124,9 +125,16 @@ The fzf picker inherits your `FZF_DEFAULT_OPTS` theme automatically (only the
 layout is pinned), so it matches the rest of your fzf UI out of the box.
 
 By default the summary is rendered through [`glow`](https://github.com/charmbracelet/glow)
-(or `bat` if glow is absent) for formatted Markdown. Because the renderer buffers,
-the summary appears all at once when it finishes rather than streaming token by
-token — set `@summarize_render 'none'` if you prefer the live stream.
+(or `bat` if glow is absent) for formatted Markdown, shown in a **scrollable
+pager** — a tmux popup has no scrollback of its own, so without a pager a long
+summary would scroll off and be unreachable. Use **↑/↓ or `j`/`k`** to scroll and
+**`q`** to close. Set `@summarize_pager 'off'` for a static view (press Enter to
+close, no scrolling), or `@summarize_render 'none'` for raw, unrendered output.
+The `split` output (`@summarize_output 'split'`) uses a normal pane, which already
+scrolls via tmux copy-mode (`prefix + [`).
+
+Because the renderer buffers, the summary appears once it finishes rather than
+streaming token by token.
 
 Example:
 

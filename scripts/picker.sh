@@ -119,10 +119,8 @@ case "$mode" in
 arg) line="$base $(shq "$payload")" ;;
 stdin) line="$base - < $(shq "$payload")" ;;
 esac
-# Pretty-render the markdown (glow/bat by default; @summarize_render none for raw).
-line="$line $(render_pipe)"
 
 # Replace the picker with the framed summary in this same popup, via a login shell
 # so the environment (OPENAI_BASE_URL, keys) matches a normal pane. frame_command
-# adds the shared header/footer and holds the screen until Enter.
-exec "$(login_shell)" -l -c "$(frame_command "$line" "$choice" yes)"
+# adds the header and pages the output (glow/bat) so it scrolls; q closes.
+exec "$(login_shell)" -l -c "$(frame_command "$line" "$choice")"

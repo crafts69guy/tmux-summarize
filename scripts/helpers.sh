@@ -229,52 +229,79 @@ summary_footer() {
   printf '\n%s──── done ────%s  %senter%s close\n' "$a" "$r" "$a" "$r"
 }
 
-# render_fragment <renderer> -> the pipe fragment that pretty-renders the summary
-# markdown, or empty for an unknown renderer. Kept separate from availability so
-# the shape is testable on machines without glow/bat installed.
-render_fragment() {
-  case "$1" in
-  glow) printf '| glow -' ;;
-  bat)  printf '| bat --language=markdown --style=plain --color=always --paging=never' ;;
-  *)    : ;;
-  esac
+# summary_header_md <choice> -> the header as Markdown, so it can be fed through
+# glow/bat and scroll together with the summary (a tmux popup has no scrollback of
+# its own, so the body is paged; an ANSI header printed before the pager would be
+# hidden on the pager's alternate screen).
+summary_header_md() {
+  local model
+  model="$(get_opt model '')"; [ -n "$model" ] || model='auto'
+  # The backticks are literal Markdown (inline code), not command substitution.
+  # shellcheck disable=SC2016
+  printf '## ▌ Summarize · %s\n\n`model: %s`\n\n---\n\n' "$(source_label_plain "$1")" "$model"
 }
 
-# render_pipe -> the rendering pipe fragment to append after the summarize call,
-# or empty for raw passthrough. @summarize_render = auto (default) | glow | bat | none.
-#   auto: glow if installed, else bat, else raw.
-# A named-but-missing renderer also falls back to raw rather than erroring. When
-# summarize is piped its stdout is no longer a TTY, so it emits plain markdown
-# (no ANSI of its own) — exactly what glow renders and bat highlights.
-render_pipe() {
-  local choice renderer=''
+# resolve_renderer -> glow | bat | none, honouring @summarize_render
+# (auto = glow → bat → raw) and actual availability. A named-but-missing renderer
+# degrades to none rather than erroring.
+resolve_renderer() {
+  local choice r
   choice="$(get_opt render 'auto')"
   case "$choice" in
-  none) return ;;
-  glow | bat) renderer="$choice" ;;
+  none) printf none; return ;;
+  glow | bat) r="$choice" ;;
   auto)
-    if command -v glow >/dev/null 2>&1; then
-      renderer=glow
-    elif command -v bat >/dev/null 2>&1; then
-      renderer=bat
-    fi
-    ;;
+    if command -v glow >/dev/null 2>&1; then r=glow
+    elif command -v bat >/dev/null 2>&1; then r=bat
+    else printf none; return; fi ;;
+  *) printf none; return ;;
   esac
-  [ -n "$renderer" ] && command -v "$renderer" >/dev/null 2>&1 || return
-  render_fragment "$renderer"
+  command -v "$r" >/dev/null 2>&1 && printf '%s' "$r" || printf none
 }
 
-# frame_command <inner-cmd> <choice> <hold:yes|no> -> a shell command line that
-# prints the header, runs <inner-cmd>, then the footer. With hold=yes it waits
-# for Enter (popup, where the screen vanishes on exit); hold=no returns to the
-# prompt (split pane). The header/footer text is rendered here (bash) and embedded
-# as literal printf args, so it works whatever login shell runs the line (fish/zsh).
+# render_fragment <renderer> <paged:yes|no> -> the inline pipe fragment that
+# renders the summary markdown (no header), for screens that already scroll: the
+# split pane (real scrollback) and the no-pager popup. Empty for raw passthrough.
+# Kept availability-free so the shape is testable without glow/bat installed.
+render_fragment() {
+  local r="$1" paged="${2:-no}"
+  case "$r" in
+  glow) [ "$paged" = yes ] && printf '| glow -p' || printf '| glow -' ;;
+  bat)
+    if [ "$paged" = yes ]; then
+      printf '| bat --language=markdown --style=plain --color=always --paging=always'
+    else
+      printf '| bat --language=markdown --style=plain --color=always --paging=never'
+    fi ;;
+  *) : ;;
+  esac
+}
+
+# frame_command <inner-cmd> <choice> -> the popup command line. By default the
+# summary is shown in the renderer's own pager (glow -p / bat --paging) so it is
+# scrollable — the header is prepended as Markdown into the same stream so it
+# scrolls too. Set @summarize_pager 'off' for the old read-hold (not scrollable).
+# Header/body are assembled here (bash) and embedded as literal printf args, so the
+# line works whatever login shell runs it (fish/zsh). The split path renders inline
+# via render_fragment instead (real panes already scroll) — see run.sh.
 frame_command() {
-  local inner="$1" choice="$2" hold="${3:-yes}" hdr ftr out
+  local inner="$1" choice="$2" r hdr ftr
   # printf-x trick preserves the trailing blank lines that $() would strip.
-  hdr="$(summary_header "$(source_label "$choice")"; printf x)"; hdr="${hdr%x}"
-  ftr="$(summary_footer; printf x)"; ftr="${ftr%x}"
-  out="printf '%s' $(shq "$hdr"); $inner; printf '%s' $(shq "$ftr")"
-  [ "$hold" = yes ] && out="$out; sh -c 'read REPLY'"
-  printf '%s' "$out"
+  if [ "$(get_opt pager 'on')" = off ]; then
+    inner="$inner $(render_fragment "$(resolve_renderer)" no)"
+    hdr="$(summary_header "$(source_label "$choice")"; printf x)"; hdr="${hdr%x}"
+    ftr="$(summary_footer; printf x)"; ftr="${ftr%x}"
+    printf '%s' "printf '%s' $(shq "$hdr"); $inner; printf '%s' $(shq "$ftr"); sh -c 'read REPLY'"
+    return
+  fi
+  r="$(resolve_renderer)"
+  case "$r" in
+  glow | bat)
+    hdr="$(summary_header_md "$choice"; printf x)"; hdr="${hdr%x}"
+    printf '%s' "{ printf '%s' $(shq "$hdr"); $inner; } $(render_fragment "$r" yes)" ;;
+  *)
+    # Raw: keep the ANSI header and page through less (-R passes the colours).
+    hdr="$(summary_header "$(source_label "$choice")"; printf x)"; hdr="${hdr%x}"
+    printf '%s' "{ printf '%s' $(shq "$hdr"); $inner; } | less -R" ;;
+  esac
 }
