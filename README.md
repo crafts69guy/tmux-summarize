@@ -97,8 +97,9 @@ All options use the `@summarize_*` namespace. Set them in `tmux.conf`.
 | `@summarize_extra_args` | *(unset)* | Raw flags appended verbatim |
 | `@summarize_output` | `popup` | Where output goes: `popup` or `split` |
 | `@summarize_shell` | *(tmux `default-shell`)* | Login shell the popup runs through (loads your env) |
-| `@summarize_popup_width` | `80%` | Popup width (when `output = popup`) |
+| `@summarize_popup_width` | *(paper: `wrap`+8 cols)* | Popup width (when `output = popup`); defaults to a centred paper column |
 | `@summarize_popup_height` | `80%` | Popup height (when `output = popup`) |
+| `@summarize_wrap` | `80` | Word-wrap column for the rendered summary (the "paper" width) |
 | `@summarize_split` | `h` | Split direction `h`/`v` (when `output = split`) |
 | `@summarize_split_size` | `40%` | Split size (when `output = split`) |
 | `@summarize_pane_lines` | `2000` | Scrollback to capture (`-` = all, or a number) |
@@ -128,10 +129,16 @@ By default the summary is rendered through [`glow`](https://github.com/charmbrac
 (or `bat` if glow is absent) for formatted Markdown, shown in a **scrollable
 pager** — a tmux popup has no scrollback of its own, so without a pager a long
 summary would scroll off and be unreachable. Use **↑/↓ or `j`/`k`** to scroll and
-**`q`** to close. Set `@summarize_pager 'off'` for a static view (press Enter to
-close, no scrolling), or `@summarize_render 'none'` for raw, unrendered output.
-The `split` output (`@summarize_output 'split'`) uses a normal pane, which already
-scrolls via tmux copy-mode (`prefix + [`).
+**`q`** to go back (close the popup). Set `@summarize_pager 'off'` for a static
+view (press Enter to close, no scrolling), or `@summarize_render 'none'` for raw,
+unrendered output. The `split` output (`@summarize_output 'split'`) uses a normal
+pane, which already scrolls via tmux copy-mode (`prefix + [`).
+
+The popup defaults to a **centred paper column** (`@summarize_wrap`+8 columns wide,
+80+8 by default) so the text fills it and sits centred on screen instead of hugging
+the left of a full-width popup. Make the page narrower or wider with
+`@summarize_wrap` (e.g. `set -g @summarize_wrap '72'`), or set an explicit
+`@summarize_popup_width` to override the paper sizing entirely.
 
 Because the renderer buffers, the summary appears once it finishes rather than
 streaming token by token.

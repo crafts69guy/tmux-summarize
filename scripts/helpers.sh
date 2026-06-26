@@ -69,11 +69,30 @@ login_shell() {
 }
 
 # popup_dims -> "<width> <height>" for display-popup, from @summarize_popup_width /
-# @summarize_popup_height (defaults 80%/80%). Read with: read -r w h < <(popup_dims)
+# @summarize_popup_height (default 80%). The width defaults to a centred "paper"
+# column (paper_cols) so the rendered summary fills it instead of hugging the left
+# of a full-width popup; set @summarize_popup_width to override. Read with:
+#   read -r w h < <(popup_dims)
 popup_dims() {
-  printf '%s %s' \
-    "$(get_opt popup_width '80%')" \
-    "$(get_opt popup_height '80%')"
+  local w
+  w="$(get_opt popup_width '')"
+  [ -n "$w" ] || w="$(paper_cols)"
+  printf '%s %s' "$w" "$(get_opt popup_height '80%')"
+}
+
+# paper_cols -> the popup width in columns for a paper-like reading column: the
+# render wrap (@summarize_wrap, default 80) plus room for borders/margins, capped
+# to the client width so it always fits. tmux popups centre by default, so a
+# narrower popup reads like a centred sheet of paper.
+paper_cols() {
+  local wrap cw want cap
+  wrap="$(get_opt wrap '80')"
+  cw="$(tmux display-message -p '#{client_width}' 2>/dev/null)"
+  [ -n "$cw" ] || cw=100
+  want=$((wrap + 8))
+  cap=$((cw - 4))
+  [ "$cap" -gt 0 ] && [ "$want" -gt "$cap" ] && want="$cap"
+  printf '%s' "$want"
 }
 
 # wait_pane_ready <pane-id>
@@ -237,8 +256,11 @@ summary_header_md() {
   local model
   model="$(get_opt model '')"; [ -n "$model" ] || model='auto'
   # The backticks are literal Markdown (inline code), not command substitution.
+  # The hint line tells the user how to scroll/leave glow's pager (whose own
+  # prompt isn't customisable), so it lives in the rendered content.
   # shellcheck disable=SC2016
-  printf '## ▌ Summarize · %s\n\n`model: %s`\n\n---\n\n' "$(source_label_plain "$1")" "$model"
+  printf '## ▌ Summarize · %s\n\n`model: %s` · ↑/↓ scroll · `q` to go back\n\n---\n\n' \
+    "$(source_label_plain "$1")" "$model"
 }
 
 # resolve_renderer -> glow | bat | none, honouring @summarize_render
@@ -264,14 +286,15 @@ resolve_renderer() {
 # split pane (real scrollback) and the no-pager popup. Empty for raw passthrough.
 # Kept availability-free so the shape is testable without glow/bat installed.
 render_fragment() {
-  local r="$1" paged="${2:-no}"
+  local r="$1" paged="${2:-no}" w
+  w="$(get_opt wrap '80')"  # paper column width (word-wrap), keeps lines readable
   case "$r" in
-  glow) [ "$paged" = yes ] && printf '| glow -p' || printf '| glow -' ;;
+  glow) [ "$paged" = yes ] && printf '| glow -p -w %s' "$w" || printf '| glow -w %s' "$w" ;;
   bat)
     if [ "$paged" = yes ]; then
-      printf '| bat --language=markdown --style=plain --color=always --paging=always'
+      printf '| bat --language=markdown --style=plain --color=always --paging=always --wrap=auto --terminal-width=%s' "$w"
     else
-      printf '| bat --language=markdown --style=plain --color=always --paging=never'
+      printf '| bat --language=markdown --style=plain --color=always --paging=never --wrap=auto --terminal-width=%s' "$w"
     fi ;;
   *) : ;;
   esac
@@ -301,7 +324,8 @@ frame_command() {
     printf '%s' "{ printf '%s' $(shq "$hdr"); $inner; } $(render_fragment "$r" yes)" ;;
   *)
     # Raw: keep the ANSI header and page through less (-R passes the colours).
+    # less's prompt IS customisable (unlike glow's pager), so show the go-back key.
     hdr="$(summary_header "$(source_label "$choice")"; printf x)"; hdr="${hdr%x}"
-    printf '%s' "{ printf '%s' $(shq "$hdr"); $inner; } | less -R" ;;
+    printf '%s' "{ printf '%s' $(shq "$hdr"); $inner; } | less -R -P$(shq '↑/↓ scroll · q to go back')" ;;
   esac
 }

@@ -69,7 +69,12 @@ check 'login_shell override wins' '/usr/bin/zsh' "$(login_shell)"
 
 # --- popup_dims: defaults and overrides ------------------------------------
 TMUX_OPTS=()
-check 'popup_dims defaults' '80% 80%' "$(popup_dims)"
+# Default width is a paper column: wrap(80)+8 = 88 (client_width unknown in the
+# stub, so the cap doesn't apply). Height still defaults to 80%.
+check 'popup_dims defaults' '88 80%' "$(popup_dims)"
+# wrap 60 -> 60+8 = 68 (under the stub's fallback cap of client_width 100 - 4).
+TMUX_OPTS=([@summarize_wrap]='60')
+check 'popup_dims paper from wrap' '68 80%' "$(popup_dims)"
 TMUX_OPTS=([@summarize_popup_width]='70%' [@summarize_popup_height]='60%')
 check 'popup_dims overrides' '70% 60%' "$(popup_dims)"
 
@@ -109,11 +114,14 @@ check 'header model auto'  yes "$(has_substr "$(summary_header x)" 'auto')"
 
 # --- render_fragment: inline (no pager) vs paged variants ------------------
 TMUX_OPTS=()
-check 'frag glow inline' '| glow -'  "$(render_fragment glow no)"
-check 'frag glow paged'  '| glow -p' "$(render_fragment glow yes)"
-check 'frag bat inline'  '| bat --language=markdown --style=plain --color=always --paging=never'  "$(render_fragment bat no)"
-check 'frag bat paged'   '| bat --language=markdown --style=plain --color=always --paging=always' "$(render_fragment bat yes)"
+check 'frag glow inline' '| glow -w 80'    "$(render_fragment glow no)"
+check 'frag glow paged'  '| glow -p -w 80' "$(render_fragment glow yes)"
+check 'frag bat inline'  '| bat --language=markdown --style=plain --color=always --paging=never --wrap=auto --terminal-width=80'  "$(render_fragment bat no)"
+check 'frag bat paged'   '| bat --language=markdown --style=plain --color=always --paging=always --wrap=auto --terminal-width=80' "$(render_fragment bat yes)"
 check 'frag none'        '' "$(render_fragment '' no)"
+TMUX_OPTS=([@summarize_wrap]='100')
+check 'frag wrap opt'    '| glow -p -w 100' "$(render_fragment glow yes)"
+TMUX_OPTS=()
 
 # --- resolve_renderer: explicit none always resolves to none ---------------
 TMUX_OPTS=([@summarize_render]='none')
