@@ -229,6 +229,41 @@ summary_footer() {
   printf '\n%s──── done ────%s  %senter%s close\n' "$a" "$r" "$a" "$r"
 }
 
+# render_fragment <renderer> -> the pipe fragment that pretty-renders the summary
+# markdown, or empty for an unknown renderer. Kept separate from availability so
+# the shape is testable on machines without glow/bat installed.
+render_fragment() {
+  case "$1" in
+  glow) printf '| glow -' ;;
+  bat)  printf '| bat --language=markdown --style=plain --color=always --paging=never' ;;
+  *)    : ;;
+  esac
+}
+
+# render_pipe -> the rendering pipe fragment to append after the summarize call,
+# or empty for raw passthrough. @summarize_render = auto (default) | glow | bat | none.
+#   auto: glow if installed, else bat, else raw.
+# A named-but-missing renderer also falls back to raw rather than erroring. When
+# summarize is piped its stdout is no longer a TTY, so it emits plain markdown
+# (no ANSI of its own) — exactly what glow renders and bat highlights.
+render_pipe() {
+  local choice renderer=''
+  choice="$(get_opt render 'auto')"
+  case "$choice" in
+  none) return ;;
+  glow | bat) renderer="$choice" ;;
+  auto)
+    if command -v glow >/dev/null 2>&1; then
+      renderer=glow
+    elif command -v bat >/dev/null 2>&1; then
+      renderer=bat
+    fi
+    ;;
+  esac
+  [ -n "$renderer" ] && command -v "$renderer" >/dev/null 2>&1 || return
+  render_fragment "$renderer"
+}
+
 # frame_command <inner-cmd> <choice> <hold:yes|no> -> a shell command line that
 # prints the header, runs <inner-cmd>, then the footer. With hold=yes it waits
 # for Enter (popup, where the screen vanishes on exit); hold=no returns to the

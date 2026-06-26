@@ -115,6 +115,13 @@ check 'frame holds'       yes "$(has_substr "$frm" 'read REPLY')"
 frm="$(frame_command 'summarize -' pane no)"
 check 'frame no-hold'     no  "$(has_substr "$frm" 'read REPLY')"
 
+# --- render: glow/bat by default, opt out with none ------------------------
+check 'render frag glow' '| glow -' "$(render_fragment glow)"
+check 'render frag bat'  '| bat --language=markdown --style=plain --color=always --paging=never' "$(render_fragment bat)"
+check 'render frag none' '' "$(render_fragment '')"
+TMUX_OPTS=([@summarize_render]='none')
+check 'render none opt'  '' "$(render_pipe)"
+
 # --- summary ---------------------------------------------------------------
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

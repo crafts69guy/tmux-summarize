@@ -33,6 +33,9 @@ stdin) line="$base - < $(shq "$payload")" ;;
   exit 1
   ;;
 esac
+# Pretty-render the markdown through glow/bat (default; @summarize_render none for
+# raw streaming). The pipe binds after summarize's own redirect.
+line="$line $(render_pipe)"
 
 # Run the summary from the source pane's directory so relative work resolves the
 # same way it would in that pane.

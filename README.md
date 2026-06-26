@@ -114,11 +114,19 @@ All options use the `@summarize_*` namespace. Set them in `tmux.conf`.
 | `@summarize_border_lines` | `rounded` | Popup/menu border (`rounded`/`single`/`double`/…) |
 | `@summarize_border_style` | `fg=#b58900` | Popup/menu border style (yellow accent) |
 | `@summarize_title` | `#[fg=#b58900,bold] Summarize ` | Popup/menu title |
+| `@summarize_render` | `auto` | Pretty-render the summary: `auto` (glow → bat → raw), `glow`, `bat`, or `none` for raw streaming |
+| `@summarize_accent_color` | `136` | 256-colour accent for the summary header/footer (Osaka yellow) |
+| `@summarize_dim_color` | `240` | 256-colour dim for header labels |
 | `@summarize_menu_style` | `fg=#839496,bg=#002b36` | Body style (`menu` picker only) |
 | `@summarize_menu_selected` | `fg=#002b36,bg=#b58900,bold` | Selected row (`menu` picker only) |
 
 The fzf picker inherits your `FZF_DEFAULT_OPTS` theme automatically (only the
 layout is pinned), so it matches the rest of your fzf UI out of the box.
+
+By default the summary is rendered through [`glow`](https://github.com/charmbracelet/glow)
+(or `bat` if glow is absent) for formatted Markdown. Because the renderer buffers,
+the summary appears all at once when it finishes rather than streaming token by
+token — set `@summarize_render 'none'` if you prefer the live stream.
 
 Example:
 
