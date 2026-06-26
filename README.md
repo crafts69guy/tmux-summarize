@@ -18,28 +18,20 @@ The summary runs through a login shell, so it inherits your normal environment
 
 ## Demo
 
-<!-- Recorded asset lives in docs/ — see docs/README.md for how to (re)generate it. -->
+`prefix + S` opens a filterable fzf picker with a live preview — choose a source:
+
 <p align="center">
-  <img src="docs/demo.gif" alt="tmux-summarize: prefix+S menu summarizing a pane into a popup" width="800">
+  <img src="docs/picker.png" alt="tmux-summarize: prefix+S source picker with a live preview" width="800">
 </p>
 
-`prefix + S` opens a filterable fzf picker with a live preview; choose a source
-and the summary streams into the same popup:
+…and the summary is rendered (glow) into a centred, scrollable paper column:
 
-```text
-╭ Summarize ─────────╮╭ Preview ─────────────╮
-│▶ ● pane scrollback ││ $ cargo build        │
-│  ● clipboard       ││   Compiling foo v0.1 │
-│  ● URL or path     ││   error[E0382] …     │
-│  ● pick a file     ││   …                  │
-│  ● cross-pane      ││                      │
-╰────────────────────╯╰──────────────────────╯
- type to filter · ctrl-/ preview · enter run
-```
+<p align="center">
+  <img src="docs/result.png" alt="tmux-summarize: the rendered summary in a centred paper-width popup" width="800">
+</p>
 
-> No GIF yet? See [`docs/README.md`](docs/README.md) to record one (e.g. with
-> [`vhs`](https://github.com/charmbracelet/vhs)) or drop in a `docs/demo.gif` /
-> `docs/popup.png` of your own.
+> Want an animated walkthrough instead? See [`docs/README.md`](docs/README.md)
+> to record a `docs/demo.gif` (e.g. with [`vhs`](https://github.com/charmbracelet/vhs)).
 
 ## Requirements
 

@@ -1,7 +1,12 @@
 # docs/ — demo assets
 
-The main README embeds `docs/demo.gif`. Drop a recording here with that name and
-it shows up automatically. Optional stills: `popup.png`, `menu.png`, `digest.png`.
+The main README embeds two stills:
+
+- `picker.png` — the `prefix + S` source picker with its live preview.
+- `result.png` — the rendered summary in a centred, paper-width popup.
+
+Replace either by overwriting the file with a fresh capture of the same view.
+For an animated walkthrough, add `docs/demo.gif` and embed it in the README too.
 
 ## Recording a GIF
 
